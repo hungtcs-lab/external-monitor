@@ -1,0 +1,17 @@
+{
+  "name": "external-monitor",
+  "version": "0.0.1",
+  "description": "",
+  "main": "src/external-monitor.ts",
+  "scripts": {},
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "rxjs": "^6.5.5",
+    "serialport": "^9.0.0",
+    "systeminformation": "^4.26.9"
+  },
+  "devDependencies": {
+    "@types/serialport": "^8.0.1"
+  }
+}
