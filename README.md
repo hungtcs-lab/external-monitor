@@ -14,7 +14,7 @@ NodeJS + Arduino + OLED 可以嵌入机箱的性能监视器
 
 ### 使用方式
 
-1. 连接Arduino与OLED模块，连接当时参考`Adafruit_SSD1306`文档
+1. 连接Arduino与OLED模块，连接方式参考`Adafruit_SSD1306`文档
 2. 使用Arduino IDE下载`client`程序到Arduino
 3. 使用`npm`全局安装`external-monitor`
     ```
