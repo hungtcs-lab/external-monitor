@@ -1,4 +1,5 @@
 #include <Wire.h>
+#include <avr/wdt.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <Fonts/FreeSerif9pt7b.h>
@@ -19,33 +20,19 @@ void setup() {
     for(;;);
   }
 
-  display.clearDisplay();
-  display.setTextColor(SSD1306_WHITE);
   display.fillScreen(SSD1306_BLACK);
   display.display();
 
-  // display.setTextSize(2);
-  // display.setCursor(0, 0);
+  display.setTextColor(SSD1306_WHITE);
 
-  // display.println(F("CPU:"));
-
-  // display.setCursor(0, 24);
-  // display.println(F("24C"));
-
-  // display.setCursor(64, 24);
-  // display.println(F("152%"));
-
-  // display.setCursor(0, 48);
-  // display.println(F("3.2GHz"));
-
-  // display.display();
-
+  wdt_enable(WDTO_2S);
 }
 
 void loop() {
   while (Serial.available() > 0) {
     char inChar = Serial.read();
     if (inChar == '\n') {
+      wdt_reset();
       String type = getValue(inString, '/', 0);
       if(type.equals("CPU")) {
         displayCPUInfo();
@@ -90,17 +77,19 @@ void displayMEMInfo() {
   String percentage = getValue(inString, '/', 3);
 
   display.clearDisplay();
+
   display.setTextSize(2);
   display.setCursor(0, 0);
-
   display.println(F("MEM:"));
-  display.setCursor(0, 24);
-  display.println((percentage + "%").c_str());
 
-  display.setCursor(0, 48);
-  display.print(used.c_str());
-  display.print(F("/"));
-  display.print(total.c_str());
+  drawStringAlignRight((percentage + "%").c_str(), 128, 0);
+
+  unsigned char value = ((unsigned char)(126 * percentage.toFloat() / 100));
+  display.fillRoundRect(0, 25, 128, 14, 3, SSD1306_WHITE);
+
+  display.fillRoundRect(128 - value - 1, 26, value, 12, 3, SSD1306_BLACK);
+
+  drawStringAlignRight((used + "/" + total).c_str(), 128, 48);
 
   display.display();
 }
@@ -117,4 +106,12 @@ String getValue(String data, char separator, int index) {
     }
   }
   return found>index ? data.substring(strIndex[0], strIndex[1]) : "";
+}
+
+void drawStringAlignRight(const char *buf, int x, int y) {
+    int16_t x1, y1;
+    uint16_t w, h;
+    display.getTextBounds(buf, x, y, &x1, &y1, &w, &h);
+    display.setCursor(x - w, y);
+    display.print(buf);
 }

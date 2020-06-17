@@ -1,17 +1,36 @@
 {
   "name": "external-monitor",
   "version": "0.0.1",
-  "description": "",
+  "description": "电脑外置性能监视器",
   "main": "src/external-monitor.ts",
-  "scripts": {},
-  "author": "",
+  "scripts": {
+    "build": "tsc"
+  },
+  "author": "鸿则<hungtcs@163.com>",
   "license": "MIT",
   "dependencies": {
+    "colors": "^1.4.0",
+    "commander": "^5.1.0",
+    "inquirer": "^7.2.0",
+    "is-running": "^2.1.0",
     "rxjs": "^6.5.5",
     "serialport": "^9.0.0",
     "systeminformation": "^4.26.9"
   },
   "devDependencies": {
+    "@types/inquirer": "^6.5.0",
+    "@types/is-running": "^2.1.0",
     "@types/serialport": "^8.0.1"
-  }
+  },
+  "bin": {
+    "external-monitor": "dist/external-monitor.js"
+  },
+  "engines": {
+    "node": "v12.16.1"
+  },
+  "keywords": [
+    "arduino",
+    "oled",
+    "qtxcxc"
+  ]
 }

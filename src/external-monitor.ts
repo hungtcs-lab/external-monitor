@@ -1,82 +1,110 @@
+#!/usr/bin/env node
+import 'colors';
+import os from 'os';
+import fs from 'fs';
+import path from 'path';
+import inquirer from 'inquirer';
+import isRunning from 'is-running';
 import SerialPort from 'serialport';
-import systeminformation from 'systeminformation';
-import { mergeMap, map, catchError, tap } from 'rxjs/operators';
-import { from, bindCallback, empty, timer } from 'rxjs';
+import { fork } from 'child_process';
+import { Command } from 'commander';
 
-const serial = new SerialPort('/dev/ttyUSB0', { autoOpen: true, baudRate: 115200 }, err => {
-  console.log(err);
-});
+const PID_FILE_PATH = path.join(os.homedir(), '.config/external-monitor/pid');
 
-serial.pipe(new SerialPort.parsers.Readline({ delimiter: '\n', encoding: 'ascii' }))
-
-serial.on('data', line => console.log(`> ${line}`));
-
-timer(0, 2000)
-  .pipe(mergeMap(count => {
-    switch(count % 2) {
-      case 0: {
-        return sendCPUInfo();
-      }
-      case 1: {
-        return sendMEMInfo();
-      }
-      case 2: {
-        return sendDiskInfo();
-      }
-      default: {
-        return sendCPUInfo();
-      }
+async function isServiceRunning() {
+  if(fs.existsSync(PID_FILE_PATH)) {
+    if(isRunning(Number.parseInt(fs.readFileSync(PID_FILE_PATH, { encoding: 'ascii' })))) {
+      return true;
+    } else {
+      return false;
     }
-  }))
-  .pipe(catchError(err => {
-    console.error(err);
-    return empty();
-  }))
-  .subscribe();
-
-
-function sendCPUInfo() {
-  return from(systeminformation.cpuTemperature())
-    .pipe(map(temperature => temperature.main))
-    .pipe(mergeMap((temperature) => {
-      return from(systeminformation.cpuCurrentspeed())
-        .pipe(map(cpuCurrentspeed => cpuCurrentspeed.avg))
-        .pipe(map((speed) => ({ speed, temperature })));
-    }))
-    .pipe(mergeMap((data) => {
-      return from(systeminformation.currentLoad())
-        .pipe(map(currentLoad => currentLoad.currentload))
-        .pipe(map(load => ({ ...data, load })))
-    }))
-    .pipe(mergeMap(({ temperature, load, speed }) => bindCallback(serial.write.bind(serial))(`CPU/${ temperature }/${ speed.toFixed(1) }/${ load.toFixed(1) }\n`)))
+  } else {
+    return false;
+  }
 }
 
-function sendMEMInfo() {
-  return from(systeminformation.mem())
-    .pipe(map(mem => {
-      return {
-        total: mem.total,
-        active: mem.active,
-      };
-    }))
-    .pipe(map(({ total, active }) => ({
-      total: total/1024/1024/1024,
-      active: active/1024/1024/1024,
-      percentage: (active *100 / total)
-    })))
-    .pipe(mergeMap(({ total, active, percentage }) => bindCallback(serial.write.bind(serial))(`MEM/${ total.toFixed(1) }/${ active.toFixed(1) }/${ percentage.toFixed(1) }\n`)));
+async function startService() {
+  const ports = await SerialPort.list();
+  const answers = await inquirer.prompt([
+    {
+      type: 'list',
+      name: 'port',
+      message: '请选择串口号：',
+      choices: ports.map(port => ({ name: port.path })),
+    },
+    {
+      type: 'number',
+      name: 'baudRate',
+      default: 115200,
+      message: '请输入串口波特率：'
+    },
+    {
+      type: 'number',
+      name: 'intervals',
+      default: 1,
+      message: '请输入数据刷新间隔（秒）：'
+    },
+  ]);
+
+  const child = fork(path.join(__dirname, './worker.js'), [], {
+    detached: true,
+    stdio: 'ignore'
+  });
+
+  child.send(answers, (err) => {
+    if(err) {
+      console.error(err);
+    }
+  });
+
+  child.on('message', message => {
+    const { err } = message as any;
+    if(err) {
+      console.error(`启动失败: ${ err }`.red);
+    } else {
+      console.error(`启动成功！`.green);
+      process.exit(0);
+    }
+  });
+
+  child.unref();
 }
 
-function sendDiskInfo() {
-  return from(systeminformation.fsSize())
-    .pipe(map(fsSize => {
-      return fsSize.map(item => ({
-        size: item.size,
-        percentage: item.use,
-        mount: item.mount,
-        fs: item.fs,
-      }))
-    }))
-    .pipe(tap(a => console.log(a)))
-    // .pipe(mergeMap(({ size, percentage }) => bindCallback(serial.write.bind(serial))(`MEM/${ total.toFixed(1) }/${ active.toFixed(1) }/${ percentage.toFixed(1) }\n`)));
-}
+(async function() {
+  const program = new Command();
+
+  program
+    .command('status')
+    .description('显示服务运行状态')
+    .action(async () => {
+      if(await isServiceRunning()) {
+        console.log('external monitor is running'.green);
+      } else {
+        console.log('external monitor is not running'.red);
+      }
+      process.exit(0);
+    });
+
+  program
+    .command('start')
+    .description('启动服务')
+    .action(async () => {
+      if(await isServiceRunning()) {
+        console.log('external monitor is running'.green);
+      } else {
+        await startService();
+      }
+    });
+
+  program
+    .command('stop')
+    .description('停止服务')
+    .action(async () => {
+      if(await isServiceRunning()) {
+        process.kill(Number.parseInt(fs.readFileSync(PID_FILE_PATH, { encoding: 'ascii' })));
+      }
+    });
+
+  program.parse(process.argv);
+
+}());
