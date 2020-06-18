@@ -25,6 +25,12 @@ async function isServiceRunning() {
 
 async function startService() {
   const ports = await SerialPort.list();
+
+  if(ports.length < 1) {
+    console.log(`没有可用的串口设备！`.yellow);
+    process.exit(0);
+  }
+
   const answers = await inquirer.prompt([
     {
       type: 'list',
