@@ -1,6 +1,6 @@
 {
   "name": "external-monitor",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "电脑外置性能监视器",
   "main": "src/external-monitor.ts",
   "scripts": {
