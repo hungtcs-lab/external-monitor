@@ -69,11 +69,11 @@ async function startService() {
       console.error(`启动失败: ${ err }`.red);
     } else {
       console.error(`启动成功！`.green);
+      child.unref();
       process.exit(0);
     }
   });
 
-  child.unref();
 }
 
 (async function() {
