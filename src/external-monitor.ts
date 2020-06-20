@@ -6,6 +6,7 @@ import path from 'path';
 import inquirer from 'inquirer';
 import isRunning from 'is-running';
 import SerialPort from 'serialport';
+import systeminformation from 'systeminformation';
 import { fork } from 'child_process';
 import { Command } from 'commander';
 
@@ -31,7 +32,7 @@ async function startService() {
     process.exit(0);
   }
 
-  const answers = await inquirer.prompt([
+  const answers: any = await inquirer.prompt([
     {
       type: 'list',
       name: 'port',
@@ -50,7 +51,30 @@ async function startService() {
       default: 1,
       message: '请输入数据刷新间隔（秒）：'
     },
+    {
+      type: 'list',
+      name: 'type',
+      choices: [
+        'CPU信息',
+        '内存信息',
+        '网络信息',
+      ],
+      message: '请选择显示的信息：'
+    },
   ]);
+
+  if(answers.type === '网络信息') {
+    const ifaces = await systeminformation.networkInterfaces();
+    const { iface } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'iface',
+        message: '请选择网卡：',
+        choices: ifaces.map(port => ({ name: port.iface })),
+      },
+    ]);
+    answers.iface = iface;
+  }
 
   const child = fork(path.join(__dirname, './worker.js'), [], {
     detached: true,

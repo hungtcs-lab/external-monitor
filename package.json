@@ -30,7 +30,7 @@
     "external-monitor": "dist/external-monitor.js"
   },
   "engines": {
-    "node": "v12.16.1"
+    "node": ">=12"
   },
   "keywords": [
     "arduino",

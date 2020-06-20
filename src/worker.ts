@@ -28,7 +28,20 @@ process.on('message', (answers) => {
 
   timer(0, answers.intervals * 1000)
     .pipe(mergeMap(count => {
-      return sendMEMInfo(serial);
+      switch(answers.type) {
+        case 'CPU信息': {
+          return sendCPUInfo(serial);
+        }
+        case '内存信息': {
+          return sendMEMInfo(serial);
+        }
+        case '网络信息': {
+          return sendNETInfo(serial);
+        }
+        default: {
+          return sendCPUInfo(serial);
+        }
+      }
     }))
     .pipe(catchError(err => {
       console.error(`Error: `, err);
@@ -69,4 +82,36 @@ process.on('message', (answers) => {
       .pipe(mergeMap(({ total, active, percentage }) => bindCallback(serial.write.bind(serial))(`MEM/${ total.toFixed(1) }/${ active.toFixed(1) }/${ percentage.toFixed(1) }\n`)));
   }
 
+  function sendNETInfo(serial: SerialPort) {
+    return from(systeminformation.networkStats())
+      .pipe(map(networkStats => {
+        return networkStats.find(stat => stat.iface === answers.iface);
+      }))
+      .pipe(map(stat => {
+        const { iface, tx_sec, rx_sec } = stat!;
+        return {
+          iface: iface,
+          upload: han(tx_sec).join(''),
+          download: han(rx_sec).join(''),
+        };
+      }))
+      .pipe(mergeMap(({ iface, upload, download }) => bindCallback(serial.write.bind(serial))(`NET/${ iface }/${ upload }/${ download }\n`)));
+  }
+
 });
+
+
+function han(speed: number, fixed = 1) {
+  if(speed < 1024) {
+    return [speed.toFixed(fixed), 'B'];
+  }
+  else if(speed / 1024 < 1024) {
+    return [(speed / 1024).toFixed(fixed), 'K'];
+  }
+  else if(speed / 1024 / 1024 < 1024) {
+    return [(speed / 1024 / 1024).toFixed(fixed), 'M'];
+  }
+  else {
+    return [(speed / 1024 / 1024 / 1024).toFixed(fixed), 'G'];
+  }
+}

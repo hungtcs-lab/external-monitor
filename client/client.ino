@@ -40,6 +40,9 @@ void loop() {
       else if(type.equals("MEM")) {
         displayMEMInfo();
       }
+      else if(type.equals("NET")) {
+        displayNETInfo();
+      }
       inString = "";
     } else {
       inString += inChar;
@@ -90,6 +93,32 @@ void displayMEMInfo() {
   display.fillRoundRect(128 - value - 1, 26, value, 12, 3, SSD1306_BLACK);
 
   drawStringAlignRight((used + "/" + total).c_str(), 128, 48);
+
+  display.display();
+}
+
+void displayNETInfo() {
+  Serial.print(inString);
+  String iface = getValue(inString, '/', 1);
+  String upload = getValue(inString, '/', 2);
+  String downlaod = getValue(inString, '/', 3);
+
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setCursor(0, 0);
+
+  display.println(F("NET:"));
+
+  display.setCursor(128, 0);
+  drawStringAlignRight(iface.c_str(), 128, 0);
+
+  display.setCursor(0, 24);
+  display.println(F("U:"));
+  drawStringAlignRight(upload.c_str(), 128, 24);
+
+  display.setCursor(0, 48);
+  display.println(F("D:"));
+  drawStringAlignRight(downlaod.c_str(), 128, 48);
 
   display.display();
 }
